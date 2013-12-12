@@ -1,30 +1,22 @@
 ## constructors of null versions of types for passing to C
-const d0 = zero(Cdouble)
-const i0 = zero(int_t)
-const i1 = one(int_t)
-
-const dnull = convert(Ptr{Cdouble},0)
-const fnull = convert(Ptr{flops_t},0)
-const inull = convert(Ptr{int_t},0)
-const nnull = convert(Ptr{None},0)
-
-SuperMatrix() = SuperMatrix(SLU_NC,SLU_D,SLU_GE,i0,i0,nnull)
-NCformat() = NCformat(i0,nnull,inull,inull)
-NRformat() = NRformat(i0,nnull,inull,inull)
-SCformat() = SCformat(i0,i0,nnull,inull,inull,inull,inull,inull)
-NCPformat() = NCPformat(i0,nnull,inull,inull,inull)
-DNformat() = DNformat(i0,nnull)
-
-function superlu_options_t()
-    res = superlu_options_t(i0,i0,i0,i0,i0,i0,i0,d0,i0,i0,i0,i0,i0,i0)
-    ccall((:set_default_options,:libsuperlu),Void,(Ptr{superlu_options_t},),&res)
-    res
+for T in (:SuperMatrix,:NCformat,:NRformat,:SCformat,:SCPformat,:NCPformat,
+          :DNformat,NRformat_loc,:e_node,:ExpHeader,:LU_stack_t,
+          :mem_usage_t,:GlobalLU_t)
+    @eval begin
+        nv{}(::Type{$T}) = [apply($T,map(zero,$T.types))]  # new vector of length 1 of type T
+    end
 end
 
-function SuperLUStat_t()
-    res = SuperLUStat_t(inull,dnull,fnull,i0,i0)
-    ccall((:StatInit,:libsuperlu),Void,(Ptr{SuperLUStat_t},),&res)
-    res
+function nv(::Type{superlu_options_t})
+    v = [apply(superlu_options_t,map(zero,superlu_options_t.types))]
+    ccall((:set_default_options,:libsuperlu),Void,(Ptr{superlu_options_t},),v)
+    v
+end
+
+function nv(::Type{SuperLUStat_t})
+    v = [apply(SuperLUStat_t,map(zero,SuperLUStat_t.types))]
+    ccall((:StatInit,:libsuperlu),Void,(Ptr{SuperLUStat_t},),v)
+    v
 end
 
 abstract SuperLUMat
