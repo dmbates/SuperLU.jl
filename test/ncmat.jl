@@ -8,23 +8,23 @@ module TestNCMat
     B = DMat(ones(5))
     perm_r = zeros(Cint,5)
     perm_c = zeros(Cint,5)
-    opts = SuperLU.superlu_options_t()
+    opts = superlu_options_t()
     opts.ColPerm = SuperLU.NATURAL
-    stat = [SuperLU.SuperLUStat_t()]
-    L = [SuperLU.SuperMatrix()]
-    U = [SuperLU.SuperMatrix()]
+    stat = [SuperLUStat_t()]
+    L = [SuperMatrix()]
+    U = [SuperMatrix()]
     AA = [A.smpt]
     BB = [B.smpt]
     info = zeros(Cint,1)
     ccall((:dgssv,:libsuperlu),Void,
-          (Ptr{SuperLU.superlu_options_t},Ptr{SuperLU.SuperMatrix},Ptr{Cint},Ptr{Cint},
-           Ptr{SuperLU.SuperMatrix},Ptr{SuperLU.SuperMatrix},Ptr{SuperLU.SuperMatrix},
-           Ptr{SuperLU.SuperLUStat_t},Ptr{Cint}),
+          (Ptr{superlu_options_t},Ptr{SuperMatrix},Ptr{Cint},Ptr{Cint},
+           Ptr{SuperMatrix},Ptr{SuperMatrix},Ptr{SuperMatrix},
+           Ptr{SuperLUStat_t},Ptr{Cint}),
           &opts,&A.smpt,perm_c,perm_r,L,U,BB,stat,info)
     ccall((:dPrint_CompCol_Matrix,:libsuperlu),Void,
-          (Ptr{Uint8},Ptr{SuperLU.SuperMatrix}), "U", &U)
+          (Ptr{Uint8},Ptr{SuperMatrix}), "U", U)
     ccall((:dPrint_SuperNode_Matrix,:libsuperlu),Void,
-          (Ptr{Uint8},Ptr{SuperLU.SuperMatrix}), "L", &L)
+          (Ptr{Uint8},Ptr{SuperMatrix}), "L", L)
     showall(perm_c)
     showall(perm_r)
 end
