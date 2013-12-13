@@ -10,7 +10,7 @@ module TestNCMat
     perm_r = zeros(Cint,5)
     perm_c = zeros(Cint,5)
     opts = nv(superlu_options_t)
-    opts.ColPerm = SuperLU.NATURAL
+#    opts.ColPerm = SuperLU.NATURAL
     sTat = nv(SuperLUStat_t)
     L = nv(SuperMatrix)
     U = nv(SuperMatrix)
@@ -30,5 +30,7 @@ module TestNCMat
     ccall((:dPrint_SuperNode_Matrix,:libsuperlu),Void,
           (Ptr{Uint8},Ptr{SuperMatrix}), "L", &L)
     showall(perm_c)
+    println()
     showall(perm_r)
+    println()
 end
