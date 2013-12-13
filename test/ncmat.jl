@@ -33,4 +33,5 @@ module TestNCMat
     println()
     showall(perm_r)
     println()
+    sol = pointer_to_array(unsafe_pointer_to_objref(convert(Ptr{SuperLU.DNformat},B.sm.Store)).nzval,5)
 end
