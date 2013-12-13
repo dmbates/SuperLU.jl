@@ -1,6 +1,5 @@
 module SuperLU
 
-    #using StrPack
     import Base: \, lufact, size, nnz
 
     export
@@ -9,11 +8,11 @@ module SuperLU
         superlu_options_t,
         SuperLUStat_t,
         SuperMatrix,
+        nv,
         sp_ienv
 
-    include("superlu_utils.jl")
     include("superlu_h.jl")
-    include("supermat.jl")
-    include("superfact.jl")
+    include("superlu_types.jl")
+    include("SuperLUCode.jl")
 
 end # module

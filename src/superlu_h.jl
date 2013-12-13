@@ -219,25 +219,25 @@ const SMILU_2 = int32(2)
 const SMILU_3 = int32(3)
 # end enum milu_t
 
-# begin enum PhaseType
-typealias PhaseType Cint
-const COLPERM = int32(0)
-const ROWPERM = int32(1)
-const RELAX = int32(2)
-const ETREE = int32(3)
-const EQUIL = int32(4)
-const SYMBFAC = int32(5)
-const DIST = int32(6)
-const FACT = int32(7)
-const COMM = int32(8)
-const SOL_COMM = int32(9)
-const RCOND = int32(10)
-const SOLVE = int32(11)
-const REFINE = int32(12)
-const TRSV = int32(13)
-const GEMV = int32(14)
-const FERR = int32(15)
-const NPHASES = int32(16)
+# begin enum PhaseType - these are names of 1-based positions in SuperLUStat_t vectors.
+typealias PhaseType Int 
+const COLPERM = 1
+const ROWPERM = 2
+const RELAX = 3
+const ETREE = 4
+const EQUIL = 5
+const SYMBFAC = 6
+const DIST = 7
+const FACT = 8
+const COMM = 9
+const SOL_COMM = 10
+const RCOND = 11
+const SOLVE = 12
+const REFINE = 13
+const TRSV = 14
+const GEMV = 15
+const FERR = 16
+const NPHASES = 16 # number of phases in SuperLUStat_t vectors.
 # end enum PhaseType
 
 typealias flops_t Cfloat
@@ -317,3 +317,5 @@ type GlobalLU_t
     expanders::Ptr{ExpHeader}
     stack::LU_stack_t
 end
+
+const i1 = one(Cint)
