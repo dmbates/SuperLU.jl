@@ -49,10 +49,11 @@ end
 nnz(A::SuperLUMat) = A.sm.Store == zero(Ptr{Void}) ? zero(Cint) : nnz(matstore(A))
 
 function NCMat(A::SparseMatrixCSC{Cdouble})
-    m,n = map(int32,size(A))
-    AA = issym(A) ? ltri(A) : A
-    mtyp = issym(A) ? SLU_SYL : (istril(A) ? SLU_TRL : (istriu(A) ? SLU_TRU : SLU_GE))
-    nz = int32(nnz(AA)); nzval = copy(AA.nzval); rv = AA.rowval; cp = AA.colptr
+    m,n = map(int32,size(A));
+    ## turns out that you can't pass a matrix stored in symmetric form to dgssv
+    ## symA = issym(A); AA = symA ? tril(A) : A
+    ## mtyp = symA ? SLU_SYL : (istril(A) ? SLU_TRL : (istriu(A) ? SLU_TRU : SLU_GE))
+    nz = int32(nnz(A)); nzval = copy(A.nzval); rv = A.rowval; cp = A.colptr
     rowind = Array(int_t,nz); colptr = Array(int_t,n+i1)
                                         # use zero-based indices
     for i in 1:length(rowind); rowind[i] = int32(rv[i]) - i1; end
@@ -60,9 +61,8 @@ function NCMat(A::SparseMatrixCSC{Cdouble})
     cres = nv(SuperMatrix)
     ccall((:dCreate_CompCol_Matrix,:libsuperlu),Void,
           (Ptr{SuperMatrix},Cint,Cint,Cint,Ptr{Cdouble},Ptr{Cint},Ptr{Cint},Stype_t,Dtype_t,Mtype_t),
-          &cres,m,n,nz,nzval,rowind,colptr,SLU_NC,SLU_D,mtyp)
-    ccall((:dPrint_CompCol_Matrix,:libsuperlu),Void,(Ptr{Uint8},Ptr{SuperMatrix}),
-          "A", &cres)
+          &cres,m,n,nz,nzval,rowind,colptr,SLU_NC,SLU_D,SLU_GE)
+#    ccall((:dPrint_CompCol_Matrix,:libsuperlu),Void,(Ptr{Uint8},Ptr{SuperMatrix}),"A",&cres)
     NCMat(cres,colptr,rowind,nzval)
 end
 
@@ -73,8 +73,7 @@ function DMat(B::StridedVecOrMat{Cdouble})
     ccall((:dCreate_Dense_Matrix,:libsuperlu),Void,
           (Ptr{SuperMatrix},Cint,Cint,Ptr{Cdouble},Cint,Cint,Cint,Cint),
           &cres,size(B,1),size(B,2),pointer(nzval),stride(B,2),SLU_DN,SLU_D,mtyp)
-    ccall((:dPrint_Dense_Matrix,:libsuperlu),Void,(Ptr{Uint8},Ptr{SuperMatrix}),
-          "B", &cres)
+#    ccall((:dPrint_Dense_Matrix,:libsuperlu),Void,(Ptr{Uint8},Ptr{SuperMatrix}),"B",&cres)
     DMat(cres,nzval)
 end
 
@@ -101,7 +100,7 @@ function (\)(A::NCMat,B::StridedVecOrMat)
            Ptr{SuperLUStat_t},Ptr{Cint}),
           &opts,&A.sm,perm_c,perm_r,&L,&U,&BB.sm,&sTat,inFo)
     inFo[1] == 0 || error("dgssv returned error code $(inFo[1])")
-    ccall((:StatPrint,:libsuperlu),Void,(Ptr{SuperLUStat_t},),&sTat)
+#    ccall((:StatPrint,:libsuperlu),Void,(Ptr{SuperLUStat_t},),&sTat)
     ccall((:StatFree,:libsuperlu),Void,(Ptr{SuperLUStat_t},),&sTat)
     U.Stype == SLU_NC || error("Matrix U should be of type NCformat (Stype = 0)")
     ccall((:Destroy_CompCol_Matrix,:libsuperlu),Void,(Ptr{SuperMatrix},),&U)
