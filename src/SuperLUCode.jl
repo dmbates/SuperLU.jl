@@ -26,26 +26,26 @@ Stype(A::SuperMatrix) = A.Stype # storage type (compressed column, dense, etc. -
 Dtype(A::SuperMatrix) = A.Dtype # data type (Cdouble, complex, etc. - see Dtype_t)
 Mtype(A::SuperMatrix) = A.Mtype # matrix type (general, tril, triu, sym, etc. - see Mtype_t)
 
-nnz(A::NCformat) = A.nnz
-nnz(A::NRformat) = A.nnz
-nnz(A::SCformat) = A.nnz
-nnz(A::SCPformat) = A.nnz
-nnz(A::NCPformat) = A.nnz
-nnz(A::DNformat) = A.nnz
-nnz(A::NRformat_loc) = A.nnz
+for T in (:NCformat,:NRformat,:SCformat,:SCPformat,:NCPformat,:DNformat,:NRformat_loc)
+    @eval begin
+        nnz(A::$T) = A.nnz
+    end
+end
+
 function matstore(A::SuperMatrix)
     st = Stype(A)
-    st == SLU_NC && return unsafe_pointer_to_objref(convert(Ptr{NCformat},A.Store))
-    st == SLU_NCP && return unsafe_pointer_to_objref(convert(Ptr{NCPformat},A.Store))
-    st == SLU_NR && return unsafe_pointer_to_objref(convert(Ptr{NRformat},A.Store))
-    st == SLU_SC && return unsafe_pointer_to_objref(convert(Ptr{SCformat},A.Store))
-    st == SLU_SCP && return unsafe_pointer_to_objref(convert(Ptr{SCPformat},A.Store))
-    st == SLU_SR && return unsafe_pointer_to_objref(convert(Ptr{SRformat},A.Store))
-    st == SLU_DN && return unsafe_pointer_to_objref(convert(Ptr{DNformat},A.Store))
-    st == SLU_NR_loc && return unsafe_pointer_to_objref(convert(Ptr{NRformat_loc},A.Store))
+    st == SLU_NC && return unsafe_load(convert(Ptr{NCformat},A.Store))
+    st == SLU_NCP && return unsafe_load(convert(Ptr{NCPformat},A.Store))
+    st == SLU_NR && return unsafe_load(convert(Ptr{NRformat},A.Store))
+    st == SLU_SC && return unsafe_load(convert(Ptr{SCformat},A.Store))
+    st == SLU_SCP && return unsafe_load(convert(Ptr{SCPformat},A.Store))
+    st == SLU_SR && return unsafe_load(convert(Ptr{SRformat},A.Store))
+    st == SLU_DN && return unsafe_load(convert(Ptr{DNformat},A.Store))
+    st == SLU_NR_loc && return unsafe_load(convert(Ptr{NRformat_loc},A.Store))
     error("Unknown Stype = $st")
 end
 
+## could cheat here because nnz is always the first member of the type
 nnz(A::SuperLUMat) = A.sm.Store == zero(Ptr{Void}) ? zero(Cint) : nnz(matstore(A))
 
 function NCMat(A::SparseMatrixCSC{Cdouble})
@@ -67,13 +67,12 @@ function NCMat(A::SparseMatrixCSC{Cdouble})
 end
 
 function DMat(B::StridedVecOrMat{Cdouble})
-    m = int32(size(B,1)); n = int32(size(B,2))
     mtyp = isa(B, Vector) ? SLU_GE : (istril(B) ? SLU_TRL : (istriu(B) ? SLU_TRU : SLU_GE))
     nzval = copy(B[:])
     cres = nv(SuperMatrix)
     ccall((:dCreate_Dense_Matrix,:libsuperlu),Void,
           (Ptr{SuperMatrix},Cint,Cint,Ptr{Cdouble},Cint,Cint,Cint,Cint),
-          &cres,size(B,1),size(B,2),B,stride(B,2),SLU_DN,SLU_D,mtyp)
+          &cres,size(B,1),size(B,2),pointer(nzval),stride(B,2),SLU_DN,SLU_D,mtyp)
     ccall((:dPrint_Dense_Matrix,:libsuperlu),Void,(Ptr{Uint8},Ptr{SuperMatrix}),
           "B", &cres)
     DMat(cres,nzval)
@@ -85,9 +84,11 @@ function sp_ienv(i::Integer)
     ccall((:sp_ienv,:libsuperlu),Cint,(Cint,),i)
 end
 
-function (\)(A::NCMat,B::DMat)
-    opts = nv(superlu_options_t)
+function (\)(A::NCMat,B::StridedVecOrMat)
+    A.sm.Dtype == SLU_D && eltype(B) == Cdouble || error("Both A and B must be Float64 arrays")
     m,n = size(A); m == n == size(B,1) || error("Dimension mismatch")
+    BB = DMat(B)
+    opts = nv(superlu_options_t)
     perm_r = zeros(Cint,n)
     perm_c = zeros(Cint,n)
     sTat = nv(SuperLUStat_t)
@@ -98,16 +99,15 @@ function (\)(A::NCMat,B::DMat)
           (Ptr{superlu_options_t},Ptr{SuperMatrix},Ptr{Cint},Ptr{Cint},
            Ptr{SuperMatrix},Ptr{SuperMatrix},Ptr{SuperMatrix},
            Ptr{SuperLUStat_t},Ptr{Cint}),
-          &opts,&A.sm,perm_c,perm_r,&L,&U,&B.sm,&sTat,inFo)
-    info[1] == 0 || error("dgssv returned error code $(info[1])")
-    ccall((:StatPrint,:libsuperlu),Void,(Ptr{SuperLUStat_t},),stat)
-    ccall((:dPrint_CompCol_Matrix,:libsuperlu),Void,
-          (Ptr{Uint8},Ptr{SuperMatrix}), "U", &U)
-    ccall((:dPrint_SuperNode_Matrix,:libsuperlu),Void,
-          (Ptr{Uint8},Ptr{SuperMatrix}), "L", &L)
-    showall(perm_c)
-    showall(perm_r)
-    reshape(B.nzval,size(B))
+          &opts,&A.sm,perm_c,perm_r,&L,&U,&BB.sm,&sTat,inFo)
+    inFo[1] == 0 || error("dgssv returned error code $(inFo[1])")
+    ccall((:StatPrint,:libsuperlu),Void,(Ptr{SuperLUStat_t},),&sTat)
+    ccall((:StatFree,:libsuperlu),Void,(Ptr{SuperLUStat_t},),&sTat)
+    U.Stype == SLU_NC || error("Matrix U should be of type NCformat (Stype = 0)")
+    ccall((:Destroy_CompCol_Matrix,:libsuperlu),Void,(Ptr{SuperMatrix},),&U)
+    L.Stype == SLU_SC || error("Matrix L should be of type SCformat (Stype = 3)")
+    ccall((:Destroy_SuperNode_Matrix,:libsuperlu),Void,(Ptr{SuperMatrix},),&L)
+    reshape(BB.nzval,size(B))
 end
 
 function lufact(A::NCMat,opts::superlu_options_t)

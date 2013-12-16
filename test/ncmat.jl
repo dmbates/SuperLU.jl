@@ -10,7 +10,7 @@ module TestNCMat
     perm_r = zeros(Cint,5)
     perm_c = zeros(Cint,5)
     opts = nv(superlu_options_t)
-#    opts.ColPerm = SuperLU.NATURAL
+    opts.ColPerm = SuperLU.NATURAL
     sTat = nv(SuperLUStat_t)
     L = nv(SuperMatrix)
     U = nv(SuperMatrix)
@@ -25,13 +25,12 @@ module TestNCMat
     println("B.nzval after solution")
     showcompact(B.nzval)
     ccall((:dPrint_Dense_Matrix,:libsuperlu),Void,(Ptr{Uint8},Ptr{SuperMatrix}),"X",&(B.sm))
-    ccall((:dPrint_CompCol_Matrix,:libsuperlu),Void,
-          (Ptr{Uint8},Ptr{SuperMatrix}), "U", &U)
-    ccall((:dPrint_SuperNode_Matrix,:libsuperlu),Void,
-          (Ptr{Uint8},Ptr{SuperMatrix}), "L", &L)
+    ccall((:dPrint_CompCol_Matrix,:libsuperlu),Void,(Ptr{Uint8},Ptr{SuperMatrix}),"U",&U)
+    ccall((:Destroy_CompCol_Matrix,:libsuperlu),Void,(Ptr{SuperMatrix},),&U)
+    ccall((:dPrint_SuperNode_Matrix,:libsuperlu),Void,(Ptr{Uint8},Ptr{SuperMatrix}),"L",&L)
+    ccall((:Destroy_SuperNode_Matrix,:libsuperlu),Void,(Ptr{SuperMatrix},),&L)
     showall(perm_c)
     println()
     showall(perm_r)
     println()
-    sol = pointer_to_array(unsafe_pointer_to_objref(convert(Ptr{SuperLU.DNformat},B.sm.Store)).nzval,5)
 end
