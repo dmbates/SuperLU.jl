@@ -16,7 +16,6 @@ end
             error("Homebrew package not installed, please run Pkg.add(\"Homebrew\")")
     end
     using Homebrew
-    superlu = library_dependency("libsuperlu")
     provides( Homebrew.HB, "superlu", superlu, os = :Darwin ) # doesn't exist at present
 end
 
