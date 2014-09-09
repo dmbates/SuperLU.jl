@@ -28,7 +28,7 @@ Mtype(A::SuperMatrix) = A.Mtype # matrix type (general, tril, triu, sym, etc. - 
 
 for T in (:NCformat,:NRformat,:SCformat,:SCPformat,:NCPformat,:DNformat,:NRformat_loc)
     @eval begin
-        nnz(A::$T) = A.nnz
+        countnz(A::$T) = A.nnz
     end
 end
 
@@ -46,14 +46,14 @@ function matstore(A::SuperMatrix)
 end
 
 ## could cheat here because nnz is always the first member of the type
-nnz(A::SuperLUMat) = A.sm.Store == zero(Ptr{Void}) ? zero(Cint) : nnz(matstore(A))
+countnz(A::SuperLUMat) = A.sm.Store == zero(Ptr{Void}) ? zero(Cint) : countnz(matstore(A))
 
 function NCMat(A::SparseMatrixCSC{Cdouble})
     m,n = map(int32,size(A));
     ## turns out that you can't pass a matrix stored in symmetric form to dgssv
     ## symA = issym(A); AA = symA ? tril(A) : A
     ## mtyp = symA ? SLU_SYL : (istril(A) ? SLU_TRL : (istriu(A) ? SLU_TRU : SLU_GE))
-    nz = int32(nnz(A)); nzval = copy(A.nzval); rv = A.rowval; cp = A.colptr
+    nz = int32(nfilled(A)); nzval = copy(A.nzval); rv = A.rowval; cp = A.colptr
     rowind = Array(int_t,nz); colptr = Array(int_t,n+i1)
                                         # use zero-based indices
     for i in 1:length(rowind); rowind[i] = int32(rv[i]) - i1; end

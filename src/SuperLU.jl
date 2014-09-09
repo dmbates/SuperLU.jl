@@ -1,6 +1,6 @@
 module SuperLU
 
-    import Base: \, lufact, size, nnz
+    import Base: \, lufact, size, nfilled
 
     export
         DMat,

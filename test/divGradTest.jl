@@ -24,7 +24,7 @@ for n in (8,16,24)
     umftimes = [@elapsed A\b for i in 1:10]
     gc()
     slutimes = [@elapsed NCMat(A)\b for i in 1:10]
-    println("Times for solving divgrad system of size $(size(A)), nnz = $(nnz(A))")
+    println("Times for solving divgrad system of size $(size(A)), nnz = $(nfilled(A))")
     showcompact(umftimes)
     println()
     showcompact(slutimes)
